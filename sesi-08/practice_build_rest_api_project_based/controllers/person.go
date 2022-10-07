@@ -99,7 +99,7 @@ func (idb *InDB) UpdatePerson(c *gin.Context)  {
 		}
 	}
 	newPerson.First_Name =  first_name
-	newPerson.Last_Name =  last_name
+	newPerson.Last_Name  =  last_name
 	err = idb.DB.Model(&person).Updates(newPerson).Error
 	if err != nil {
 		result = gin.H{
@@ -139,6 +139,10 @@ func (idb *InDB) DeletePerson(c *gin.Context)  {
 			"result" : "data deleted successfully",
 		}
 	}
+
+	result = gin.H{
+			"result" : "data deleted successfully",
+		}
 
 	c.JSON(http.StatusOK, result)
 }
