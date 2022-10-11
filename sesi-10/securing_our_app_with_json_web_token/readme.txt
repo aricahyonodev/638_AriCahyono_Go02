@@ -10,4 +10,4 @@ Biodata :
 
 Postman :
     URL Collection API : 
-      - https://www.postman.com/collections/5712177cc898dafe2925 
+      - https://www.getpostman.com/collections/5712177cc898dafe2925 
