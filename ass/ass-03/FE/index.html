@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- CSS only -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div class="text-center w-full">
+        <h1 class="font-semibold text-lg">Refresh Time </h1>
+        <p class="text-7xl mb-2 text-cyan-400" id="refreshTime">0</p>
+        <i class="block text-sm ">every 10 seconds</i>
+    </div>
+    <div class="flex justify-center mb-6">
+        <a href="about_me.html">
+            <button class="bg-cyan-400 hover:bg-cyan-500 focus:bg-cyan-500 p-2 mt-2 rounded-md text-white  text-sm">
+                About Me
+            </button>
+        </a>
+    </div>
+   <!-- Table -->
+   <div class="flex justify-center">
+    <table class="w-4/5 text-center">
+            <th>
+                <tr class="bg-cyan-400 text-white text-lg ">
+                    <td>No</td>
+                    <td>Name</td>
+                    <td>Value</td>
+                    <td>Status</td>
+                    <td>Name</td>
+                    <td>Value</td>
+                    <td>Status</td>
+                </tr>
+            </th>
+        <tbody id="tableDrinks">
+        
+        </tbody>
+    </table>
+   </div>
+</body>
+<script type="text/javascript">
+
+    const checkStatus = (status) => {
+        if (status === "siaga") return "bg-yellow-400"
+        if (status === "aman") return "bg-green-400"
+        return "bg-red-400"
+    } 
+
+    const generateHtml = (drinks) => {
+          let tableList =  ""
+            drinks.forEach((dt, i)=>
+
+                tableList += `<tr class="hover:bg-gray-200">
+                    <td>${i + 1}</td>
+                    <td>Water</td>
+                    <td>${dt.Water}</td>
+                    <td class="py-2 ${checkStatus(dt.WaterStatus)}">${dt.WaterStatus}</td>
+                    <td>Wish</td>
+                    <td>${dt.Wish}</td>
+                    <td  class="py-2 ${checkStatus(dt.WishStatus)}">${dt.WishStatus}</td>
+                </tr>`
+            )
+         document.getElementById("tableDrinks").innerHTML = tableList
+    } 
+
+    const getDrinks  = async () => {
+        const response     =  await fetch('http://localhost:3000/drinks')
+        const { result }   =  await response.json()
+        generateHtml(result)
+    }
+
+    const refreshTime = () => {
+        let refreshTime= parseInt(document.getElementById("refreshTime").innerText)
+        setInterval(() => {
+            refreshTime = refreshTime >= 10 ?  1 : refreshTime + 1;
+            document.getElementById("refreshTime").innerHTML  = refreshTime
+        }, 1000);
+    }
+
+    // First Running
+     getDrinks()
+     refreshTime()
+
+    //  Running Every 10 seconds
+     setInterval(async() => {
+        // loading Refresh
+        document.getElementById("tableDrinks").innerHTML = `<p class="text-center">loading ...</p>`
+        document.getElementById("refreshTime").innerHTML = 0
+        await setTimeout(() => {
+          getDrinks()
+        }, 1000);
+        refreshTime()
+     }, 10000);      
+     
+     
+</script>
+</html>
