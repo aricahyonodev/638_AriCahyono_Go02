@@ -4,21 +4,17 @@ import (
 	"my-gram/configs"
 	"my-gram/helpers"
 	"my-gram/models"
-	"net/http"
-
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 )
 
 func Authentication() gin.HandlerFunc {
 	return func(c *gin.Context){
+		// Init Response Handler
+		inRes := &helpers.InResponse{ C : c}
 		verifyToken, err := helpers.VerifyToken(c)
 
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error" 	: "Unauthenticated",
-				"message" 	: err.Error(),
-			}) 
+			inRes.ResStatusUnauthorized(err.Error())
 			return
 		}
 		
@@ -30,27 +26,22 @@ func Authentication() gin.HandlerFunc {
 
 func PhotoAuthorization() gin.HandlerFunc {
 	return func(c *gin.Context){
+		// Init Response Handler
+		inRes := &helpers.InResponse{ C : c}
 		db 	   	 := configs.InitDb()
 
 		// Get JWT
-		userData := c.MustGet("userData").(jwt.MapClaims)
-		userID	 := int(userData["id"].(float64))
+		userID	 := helpers.GetUserIdJWT(c)
 		Photo  	 := models.Photo{}
 		
 		err 	 := db.First(&Photo, userID).Error
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-				"error"   : "Data Not Found",
-				"message" : "data doesn't exist",
-			})
+			inRes.ResStatusNotFound("Photo doesn't exist")
 			return
 		}
 
 		if Photo.UserId != userID {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error"   : "unauthorized",
-				"message" : "you are not allowed to access this data",
-			})
+			inRes.ResStatusUnauthorized("you are not allowed to access this data")
 			return
 		}
 
@@ -60,27 +51,22 @@ func PhotoAuthorization() gin.HandlerFunc {
 
 func CommentAuthorization() gin.HandlerFunc {
 	return func(c *gin.Context){
-		db 	   	 := configs.InitDb()
+		// Init Response Handler
+		inRes := &helpers.InResponse{ C : c}
+		db 	  := configs.InitDb()
 
 		// Get JWT
-		userData := c.MustGet("userData").(jwt.MapClaims)
-		userID	 := int(userData["id"].(float64))
-		Comment  	 := models.Comment{}
+		userID	 := helpers.GetUserIdJWT(c)
+		Comment  := models.Comment{}
 		
 		err 	 := db.First(&Comment, userID).Error
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-				"error"   : "Data Not Found",
-				"message" : "data doesn't exist",
-			})
+			inRes.ResStatusNotFound("Comment doesn't exist")
 			return
 		}
 
 		if Comment.UserId != userID {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error"   : "unauthorized",
-				"message" : "you are not allowed to access this data",
-			})
+			inRes.ResStatusUnauthorized("you are not allowed to access this data")
 			return
 		}
 
@@ -90,27 +76,22 @@ func CommentAuthorization() gin.HandlerFunc {
 
 func SocialMediaAuthorization() gin.HandlerFunc {
 	return func(c *gin.Context){
-		db 	   	 := configs.InitDb()
+		// Init Response Handler
+		inRes 		:= &helpers.InResponse{ C : c}
+		db 	  		:= configs.InitDb()
 
 		// Get JWT
-		userData := c.MustGet("userData").(jwt.MapClaims)
-		userID	 := int(userData["id"].(float64))
-		SocialMedia  	 := models.SocialMedia{}
+		userID	 	:= helpers.GetUserIdJWT(c)
+		SocialMedia := models.SocialMedia{}
 		
 		err 	 := db.First(&SocialMedia, userID).Error
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-				"error"   : "Data Not Found",
-				"message" : "data doesn't exist",
-			})
+			inRes.ResStatusNotFound("Social Media doesn't exist")
 			return
 		}
 
 		if SocialMedia.UserId != userID {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error"   : "unauthorized",
-				"message" : "you are not allowed to access this data",
-			})
+			inRes.ResStatusUnauthorized("you are not allowed to access this data")
 			return
 		}
 

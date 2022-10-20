@@ -1,19 +1,19 @@
 package controllers
 
 import (
-	"mime/multipart"
+	"my-gram/dto"
 	"my-gram/helpers"
 	"my-gram/models"
-	"net/http"
-	"path/filepath"
-	"strconv"
-	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	dtoMapper "github.com/dranikpg/dto-mapper"
 	"github.com/gin-gonic/gin"
 )
 
 func (idb *InDB) GetAllPhotos(c *gin.Context){
+
+	// Init Response Handler
+	inRes := &helpers.InResponse{ C : c}
+	
 	var (
 		photo []models.Photo
 		err error
@@ -22,16 +22,20 @@ func (idb *InDB) GetAllPhotos(c *gin.Context){
 	// Process Get All Data Photo in DB
 	err = idb.DB.Model(&models.Photo{}).Preload("User").Find(&photo).Error
 	if err != nil {
-			c.JSON(http.StatusBadRequest, 
-			helpers.ResponseMessage(400, err.Error()))
+			inRes.ResBadRequest(err.Error())
 			return
 		}
-		
-	c.JSON(http.StatusOK,
-	helpers.ResponseData(200, photo))
+	
+	
+	var photoAllDto []dto.PhotoAllDto
+	dtoMapper.Map(&photoAllDto, photo)
+	inRes.ResStatusOK(photoAllDto)
 }
 
+
 func (idb *InDB) PostPhotos(c *gin.Context){
+	// Init Response Handler
+	inRes := &helpers.InResponse{ C : c}
 
 	var (
 		user models.User
@@ -39,15 +43,13 @@ func (idb *InDB) PostPhotos(c *gin.Context){
 		err error
 	)
 
-	userData   := c.MustGet("userData").(jwt.MapClaims)
-	userID 	   := uint(userData["id"].(float64))
+	userID 	   := helpers.GetUserIdJWT(c)
 	
 	// Check Data in DB
 	err		   = idb.DB.First(&user, userID).Error
 	if err != nil {
-		c.JSON(http.StatusBadRequest, 
-			helpers.ResponseMessage(400, "Your account not found"))
-			return
+		inRes.ResStatusNotFound("Your account not found")
+		return
 	}
 
 	// Get Request With Raw JSON
@@ -58,7 +60,7 @@ func (idb *InDB) PostPhotos(c *gin.Context){
 	filename 		:= ""
 
 	if err == nil {
-			filename = getFilenamePhoto(file)
+			filename = helpers.GetFilenamePhoto(file)
 		}
 
 	photo.PhotoUrl = filename
@@ -67,34 +69,26 @@ func (idb *InDB) PostPhotos(c *gin.Context){
 	// Process Create Data Photo in DB
 	err = idb.DB.Create(&photo).Error
 	if err != nil {
-			c.JSON(http.StatusUnprocessableEntity, 
-			helpers.ResponseMessage(422, err.Error()))
+			inRes.ResUnprocessableEntity(err)
 			return
 		}
-		
-	c.JSON(http.StatusCreated,
-	helpers.ResponseData(201, photo))
+
+	var photoCreatedDto dto.PhotoCreateDto
+	dtoMapper.Map(&photoCreatedDto, photo)
+	inRes.ResStatusCreated(photoCreatedDto)
 
 	// Save Photo in Temp
-	c.SaveUploadedFile(file, "temp/" + filename)
+	c.SaveUploadedFile(file, "temp/photos/" + filename)
 
 }
 
 func (idb *InDB) EditPhotos(c *gin.Context){
-
-	type ResponsePhoto struct {
-		Id   	 int   		`json:"id"`
-		Title    string 	`json:"title"`
-		Caption  string 	`json:"caption"`
-		PhotoUrl string 	`json:"photo_url" `
-		UserId   int    	`json:"user_url"`
-		UpdateAt *time.Time `json:"updated_at,omitempty"`
-	}
+	// Init Response Handler
+	inRes := &helpers.InResponse{ C : c}
 
 	var (
 		photo models.Photo
 		err error
-		responsePhoto ResponsePhoto
 	)
 
 	// Get Params Url
@@ -103,9 +97,8 @@ func (idb *InDB) EditPhotos(c *gin.Context){
 	// Check Data in DB
 	err		   = idb.DB.First(&photo, photoId).Error
 	if err != nil {
-		c.JSON(http.StatusBadRequest, 
-			helpers.ResponseMessage(400, "Your photo not found"))
-			return
+		inRes.ResStatusNotFound("Your photo not found")
+		return
 	}
 
 	// Get Request With Raw JSON
@@ -116,64 +109,50 @@ func (idb *InDB) EditPhotos(c *gin.Context){
 	filename 		:= ""
 
 	if err == nil {
-			filename = getFilenamePhoto(file)
-		}
+		filename = helpers.GetFilenamePhoto(file)
+	}
 
 	photo.PhotoUrl = filename
 
 	// Process Update Data Photo in DB
 	err 	   = idb.DB.Model(&photo).Updates(photo).Error
 	if err != nil {
-			c.JSON(http.StatusUnprocessableEntity, 
-			helpers.ResponseMessage(422, err.Error()))
+			inRes.ResUnprocessableEntity(err)
 			return
 		}
 	
-	responsePhoto.Id 		= photo.PhotoId
-	responsePhoto.Title 	= photo.Title
-	responsePhoto.Caption  	= photo.Caption
-	responsePhoto.UpdateAt 	= photo.UpdateAt
-	responsePhoto.UserId   	= photo.UserId
-	responsePhoto.PhotoUrl  = photo.PhotoUrl
-
-	c.JSON(http.StatusOK,
-	helpers.ResponseData(200, responsePhoto))
+	var photoEditDto dto.PhotoEditDto
+	dtoMapper.Map(&photoEditDto, photo)
+	inRes.ResStatusOK(photoEditDto)
 
 	// Save Photo in Temp
-	c.SaveUploadedFile(file, "temp/" + filename)
+	c.SaveUploadedFile(file, "temp/photos/" + filename)
 
 }
 
 func (idb *InDB) DeletePhotos(c *gin.Context){
-	var err error
+
+	// Init Response Handler
+	inRes := &helpers.InResponse{ C : c}
 
 	// Get Params Url
 	photoId := c.Param("photoId")
 
 	// Check Photo with Find in DB
+	var err error
 	err = idb.DB.First(&models.Photo{}, photoId).Error
 	if err != nil {
-		c.JSON(http.StatusBadRequest, 
-			helpers.ResponseMessage(400, "Your photo not found"))
-			return
+		inRes.ResStatusNotFound("Your photo not found")
+		return
 	}
 
 	// Process Delete In DB
 	err = idb.DB.Delete(&models.Photo{}, photoId ).Error
 	if err != nil {
-			c.JSON(http.StatusBadRequest, 
-			helpers.ResponseMessage(400, "Your photo failed deleted"))
+			inRes.ResBadRequest("Your photo failed deleted")
 			return
 		}
 
-	c.JSON(http.StatusOK,
-	helpers.ResponseMessage(200, "Your photo has been successfully deleted"))
+	inRes.ResMsgStatusOK("Your photo has been successfully deleted")
 }
 
-func getFilenamePhoto(file *multipart.FileHeader ) string{
-	// Set Format Save Photo in Temp
-	extension := filepath.Ext(file.Filename)
-	epoc 	  := strconv.FormatInt(time.Now().Unix(), 10)
-	randomFilename  := helpers.RandomString(len(file.Filename))
-	return randomFilename + "-" + epoc + extension
-}

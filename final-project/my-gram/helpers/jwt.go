@@ -46,3 +46,9 @@ func VerifyToken(c *gin.Context) (interface{}, error)  {
 
 	return token.Claims.(jwt.MapClaims), nil
 }
+
+
+func GetUserIdJWT(c *gin.Context) int  {
+	userData   	:= c.MustGet("userData").(jwt.MapClaims)
+	return int(userData["id"].(float64))
+}

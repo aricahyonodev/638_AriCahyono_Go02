@@ -1,0 +1,18 @@
+Panduan :
+BE: 
+ 1. Siapkan Database Postgres, 
+    kemudian buat Database dengan nama 
+    - mygram
+ 2. jalankan program dengan perintah 
+    - go run main.go  
+
+Referensi / Package yang digunakan:
+- GORM        untuk ORM
+- GIN         untuk Routing
+- dto-mapper  untuk membantu convert model ke DTO
+- govalidator untuk membantu dalam validati data
+- jwt-go      untuk membantu dalam membuat token JWT
+
+Postman :
+    URL Collection API : 
+      - https://www.getpostman.com/collections/5712177cc898dafe2925 

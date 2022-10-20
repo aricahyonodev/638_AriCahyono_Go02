@@ -2,15 +2,18 @@ package controllers
 
 import (
 	"fmt"
+	"my-gram/dto"
 	"my-gram/helpers"
 	"my-gram/models"
-	"net/http"
 
-	"github.com/dgrijalva/jwt-go"
+	dtoMapper "github.com/dranikpg/dto-mapper"
 	"github.com/gin-gonic/gin"
 )
 
 func (idb *InDB) GetAllComments(c *gin.Context){
+	// Init Response Handler
+	inRes := &helpers.InResponse{ C : c}
+
 	var (
 		comment []models.Comment
 		err error
@@ -19,16 +22,18 @@ func (idb *InDB) GetAllComments(c *gin.Context){
 	// Process Get All Data Photo in DB
 	err = idb.DB.Model(&models.Comment{}).Preload("Photo").Preload("User").Find(&comment).Error
 	if err != nil {
-			c.JSON(http.StatusBadRequest, 
-			helpers.ResponseMessage(400, err.Error()))
+			inRes.ResBadRequest(err.Error())
 			return
 		}
-		
-	c.JSON(http.StatusOK,
-	helpers.ResponseData(200, comment))
+	
+	var commentAllDto []dto.CommentAllDto
+	dtoMapper.Map(&commentAllDto, comment)
+	inRes.ResStatusOK(commentAllDto)
 }
 
 func (idb *InDB) PostComments(c *gin.Context) {
+	// Init Response Handler
+	inRes := &helpers.InResponse{ C : c}
 
 	var (
 		user  	models.User
@@ -37,8 +42,7 @@ func (idb *InDB) PostComments(c *gin.Context) {
 		err   	error
 	)
 
-	userData := c.MustGet("userData").(jwt.MapClaims)
-	userID   := uint(userData["id"].(float64))
+	userID   := helpers.GetUserIdJWT(c)
 
 	// Get Request With Raw JSON
 	c.BindJSON(&comment)
@@ -46,15 +50,13 @@ func (idb *InDB) PostComments(c *gin.Context) {
 	// Check User Data in DB
 	err = idb.DB.First(&user, userID).Error
 	if err != nil {
-		c.JSON(http.StatusBadRequest,
-			helpers.ResponseMessage(400, "Your account not found"))
+		inRes.ResStatusNotFound("Your account not found")
 		return
 	}
 
 	err = idb.DB.First(&photo, comment.PhotoId).Error
 	if err != nil {
-		c.JSON(http.StatusBadRequest,
-			helpers.ResponseMessage(400, "Your Photo not found"))
+		inRes.ResStatusNotFound("Your Photo not found")
 		return
 	}
 
@@ -64,24 +66,18 @@ func (idb *InDB) PostComments(c *gin.Context) {
 	// Process Create Data Comment in DB
 	err = idb.DB.Create(&comment).Error
 	if err != nil {
-		c.JSON(http.StatusUnprocessableEntity,
-			helpers.ResponseMessage(422, err.Error()))
+		inRes.ResUnprocessableEntity(err)
 		return
 	}
 
-	commentResult := map[string]interface{}{
-	"comment_id": comment.CommentId,
-	"message" 	: comment.Message,
-	"photo_id" 	: comment.PhotoId,
-	"user_id"	: comment.UserId,
-	"create_at" : comment.CreateAt,
-	}
-	
-	c.JSON(http.StatusCreated,
-		helpers.ResponseData(201, commentResult))
+	var commentCreatedDto dto.CommentCreatedDto
+	dtoMapper.Map(&commentCreatedDto, comment)
+	inRes.ResStatusCreated(commentCreatedDto)
 }
 
 func (idb *InDB) EditComments(c *gin.Context){
+	// Init Response Handler
+	inRes := &helpers.InResponse{ C : c}
 
 	var (
 		comment models.Comment
@@ -95,37 +91,29 @@ func (idb *InDB) EditComments(c *gin.Context){
 	fmt.Println(commentId)
 	err		= idb.DB.First(&comment, commentId).Error
 	if err != nil {
-		c.JSON(http.StatusBadRequest, 
-			helpers.ResponseMessage(400, "Your comment not found"))
-			return
+		inRes.ResStatusNotFound("Your comment not found")
+		return
 	}
-	fmt.Println(comment.Message)
+
 	// Get Request With Raw JSON
 	c.BindJSON(&comment)
-	fmt.Println(comment.Message)
 
 	// Process Update Data Photo in DB
 	err 	= idb.DB.Model(&comment).Updates(comment).Error
 	if err != nil {
-			c.JSON(http.StatusUnprocessableEntity, 
-			helpers.ResponseMessage(422, err.Error()))
-			return
-		}
-	
-	commentResult := map[string]interface{}{
-	"comment_id": comment.CommentId,
-	"message" 	: comment.Message,
-	"photo_id" 	: comment.PhotoId,
-	"user_id"	: comment.UserId,
-	"update_at" : comment.UpdateAt,
+		inRes.ResUnprocessableEntity(err)
+		return
 	}
 	
-	c.JSON(http.StatusOK,
-	helpers.ResponseData(200, commentResult))
-
+	var commentEditDto dto.CommentEditDto
+	dtoMapper.Map(&commentEditDto, comment)
+	inRes.ResStatusOK(commentEditDto)
 }
 
 func (idb *InDB) DeleteComments(c *gin.Context){
+	// Init Response Handler
+	inRes := &helpers.InResponse{ C : c}
+
 	var err error
 
 	// Get Params Url
@@ -134,19 +122,16 @@ func (idb *InDB) DeleteComments(c *gin.Context){
 	// Check Comment with Find in DB
 	err = idb.DB.First(&models.Comment{}, commentId).Error
 	if err != nil {
-		c.JSON(http.StatusBadRequest, 
-			helpers.ResponseMessage(400, "Your comment not found"))
-			return
+		inRes.ResStatusNotFound("Your comment not found")
+		return
 	}
 
 	// Process Delete Comment In DB
 	err = idb.DB.Delete(&models.Comment{}, commentId ).Error
 	if err != nil {
-			c.JSON(http.StatusBadRequest, 
-			helpers.ResponseMessage(400, "Your comment failed deleted"))
-			return
-		}
-
-	c.JSON(http.StatusOK,
-	helpers.ResponseMessage(200, "Your comment has been successfully deleted"))
+		inRes.ResBadRequest("Your comment failed deleted")
+		return
+	}
+	
+	inRes.ResMsgStatusOK("Your comment has been successfully deleted")
 }

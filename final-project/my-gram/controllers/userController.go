@@ -1,11 +1,12 @@
 package controllers
 
 import (
+	"my-gram/dto"
 	"my-gram/helpers"
 	"my-gram/models"
-	"net/http"
+	"strconv"
 
-	"github.com/dgrijalva/jwt-go"
+	dtoMapper "github.com/dranikpg/dto-mapper"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -15,150 +16,155 @@ type InDB struct {
 }
 
 func (idb *InDB) Register(c *gin.Context) {
-	var (
-		user 	models.User
-		result	gin.H
-	)
+
+	// Init Response Handler
+	inRes := &helpers.InResponse{ C : c}
 
 	// Get Request With Raw JSON
-	c.BindJSON(&user)
+	var (
+		user models.User
+		err error
+	)
+	// Get Request With Form Data
+	user.Username 	= c.Request.FormValue("username")
+	user.Email 		= c.Request.FormValue("email")
+	user.Password 	= c.Request.FormValue("password")
+	user.Age, _	    = strconv.Atoi(c.Request.FormValue("age"))
+	// Get Request File
+	file, err   	:= c.FormFile("profile_image_url")
+	filename 		:= ""
+
+	if err == nil {
+			filename = helpers.GetFilenamePhoto(file)
+		}
+
+	user.ProfileImageUrl = filename
 
 	// Process Create in DB
-	err := idb.DB.Create(&user).Error
+	err = idb.DB.Create(&user).Error
 	if err != nil {
-		c.JSON(http.StatusUnprocessableEntity, 
-			helpers.ResponseMessage(422, err.Error()))
-			return
+		inRes.ResUnprocessableEntity(err)
+		return
 	}
 
-	userResult := map[string]interface{}{
-	"age" 		: user.Age,
-	"email" 	: user.Email,
-	"id" 		: 1,
-	"username" 	: user.Username,
-	}
+	// Map Model to DTO
+	var userDto dto.UserDto
+	dtoMapper.Map(&userDto, user)
+	inRes.ResStatusCreated(userDto)
 
-	result = gin.H{
-		"status" : 201,
-		"result" : userResult,
-	}
-	
-	c.JSON(http.StatusOK, result)
+	// Save Photo in Temp
+	c.SaveUploadedFile(file, "temp/profiles/" + filename)
 }
 
+
 func (idb *InDB) Login(c *gin.Context)  {
+	// Init Response Handler
+	inRes := &helpers.InResponse{ C : c}
 
-	var (
-		user 	models.User
-	)
-
+	var user models.User
 	c.BindJSON(&user)
 	password := user.Password
 
 	err := idb.DB.Debug().Where("email = ?", user.Email).Take(&user).Error
-
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error" 	: "Unauthorized",
-			"message" 	: "Invalid email/password",
-		})
+		inRes.ResStatusUnauthorized("Invalid email/password")
 		return 
 	}
 
 	comparePass := helpers.ComparePass([]byte(user.Password), []byte(password))
-
 	if !comparePass{
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error" 	: "Unauthorized",
-			"message" 	: "Invalid email/password",
-		})
+		inRes.ResStatusUnauthorized("Invalid email/password")
 		return 
 	}
 
 	token := helpers.GenerateToken(uint(user.UserId), user.Email)
-	c.JSON(http.StatusOK, gin.H{
-		"token" : token,
-	})
+	inRes.ResTokenStatusOK(token)
 }
 	
+
 func (idb *InDB) Edit(c *gin.Context){
 
+	// Init Response Handler
+	inRes := &helpers.InResponse{ C : c}
+	
 	var (
 		user models.User
 		err error
 	)
 
 	// Get userId With JWT Token
-	userData   	:= c.MustGet("userData").(jwt.MapClaims)
-	user.UserId	= int(userData["id"].(float64))
+	user.UserId = helpers.GetUserIdJWT(c)
 	
 	// Get userId With Query Params
 	// user.ID , _ = strconv.Atoi(c.Query("userId"))
 
-	// Get Request With Raw JSON
-	c.BindJSON(&user)
+	// Get Request With Form Data
+	user.Username 	= c.Request.FormValue("username")
+	user.Email 		= c.Request.FormValue("email")
+	// Get Request File
+	file, err   	:= c.FormFile("profile_image_url")
+	filename 		:= ""
+
+	if err == nil {
+			filename = helpers.GetFilenamePhoto(file)
+		}
+
+	user.ProfileImageUrl = filename
 
 	// Check Data in DB
-	err		   = idb.DB.First(&models.User{}, user.UserId).Error
+	err		   = idb.DB.First(&user).Error
 	if err != nil {
-		c.JSON(http.StatusBadRequest, 
-			helpers.ResponseMessage(400, "Your account not found"))
-			return
+		inRes.ResStatusNotFound("Your account not found")
+		return
 	}
 	
 	// Process Update in DB
 	err 	   = idb.DB.Model(&user).Updates(user).Error
 	if err != nil {
-			c.JSON(http.StatusUnprocessableEntity, 
-			helpers.ResponseMessage(422, err.Error()))
-			return
-		}
-		
-	c.JSON(http.StatusOK,
-	helpers.ResponseData(200, user))
+		inRes.ResUnprocessableEntity(err)
+		return
+	}
+	
+	// Map Model to DTO
+	var userEditDto dto.UserEditDto
+	dtoMapper.Map(&userEditDto, user)
+	inRes.ResStatusOK(userEditDto)
+
+	// Save Photo in Temp
+	c.SaveUploadedFile(file, "temp/profiles/" + filename)
 }
 
 
 func (idb *InDB) Delete(c *gin.Context){
 
-	var (
-		err error
-	)
-	userData   := c.MustGet("userData").(jwt.MapClaims)
-	userID 	   := uint(userData["id"].(float64))
+	// Init Response Handler
+	inRes := &helpers.InResponse{ C : c}
+	
+	// Get userId With JWT Token
+	userID := helpers.GetUserIdJWT(c)
 	
 	// Check Data in DB
+	var err error
 	err		   = idb.DB.First(&models.User{}, userID).Error
 	if err != nil {
-		c.JSON(http.StatusBadRequest, 
-			helpers.ResponseMessage(400, "Your account not found"))
-			return
+		inRes.ResStatusNotFound("Your account not found")
+		return
 	}
 	
 	//  Process Delete in DB
 	err 	   = idb.DB.Delete(&models.User{}, userID).Error
 	if err != nil {
-			c.JSON(http.StatusBadRequest, 
-			helpers.ResponseMessage(400, "Your account failed deleted"))
-			return
-		}
-
-	c.JSON(http.StatusBadRequest,
-	helpers.ResponseMessage(200, "Your account has been successfully deleted"))
-}
-
-
-func (idb *InDB) All(c *gin.Context) {
-	var (
-		drink  []models.User
-		result gin.H
-	)
-
-	idb.DB.Find(&drink)
-
-	result = gin.H{
-		"result": drink,
+		inRes.ResBadRequest("Your account failed deleted")
+		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	inRes.ResMsgStatusOK("Your account has been successfully deleted")
 }
+
+
+// func (idb *InDB) All(c *gin.Context) {
+// 	var drink  []models.User
+// 	idb.DB.Find(&drink)
+
+// 	c.JSON(http.StatusOK, helpers.ResponseData(200, drink))
+// }

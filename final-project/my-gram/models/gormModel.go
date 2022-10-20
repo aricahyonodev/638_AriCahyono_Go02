@@ -3,6 +3,6 @@ package models
 import "time"
 
 type GormModel struct {
-	CreateAt *time.Time `gorm:"autoCreateTime" json:"created_at,omitempty"`
-	UpdateAt *time.Time `gorm:"autoCreateTime" json:"updated_at,omitempty"`
+	CreatedAt *time.Time `gorm:"autoCreateTime" json:"created_at,omitempty"`
+	UpdatedAt *time.Time `gorm:"autoUpdateTime" json:"updated_at,omitempty"`
 }
