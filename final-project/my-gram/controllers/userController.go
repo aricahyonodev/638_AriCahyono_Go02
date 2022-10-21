@@ -112,7 +112,7 @@ func (idb *InDB) Edit(c *gin.Context){
 	user.ProfileImageUrl = filename
 
 	// Check Data in DB
-	err		   = idb.DB.First(&user).Error
+	err		   = idb.DB.First(&models.User{}, user.UserId).Error
 	if err != nil {
 		inRes.ResStatusNotFound("Your account not found")
 		return

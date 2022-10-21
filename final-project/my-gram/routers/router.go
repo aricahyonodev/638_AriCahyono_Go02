@@ -50,7 +50,7 @@ func StartApp() *gin.Engine {
 		socialMediaRouter.POST("/", inDB.PostSocialMedia)
 		socialMediaRouter.GET("/", inDB.GetAllSocialMedia)
 
-		socialMediaRouter.Use(middlewares.CommentAuthorization())
+		socialMediaRouter.Use(middlewares.SocialMediaAuthorization())
 		socialMediaRouter.DELETE("/:socialMediaId", inDB.DeleteSocialMedia)
 		socialMediaRouter.PUT("/:socialMediaId", inDB.EditSocialMedia)
 	}
