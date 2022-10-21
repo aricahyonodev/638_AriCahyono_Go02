@@ -1,0 +1,62 @@
+Panduan Pembuatan Program:
+1. Buat Folder Mygram
+2. buka terminal dan jalankan go mod init Mygram
+3. buat file main.go
+4. instal beberapa package
+   Referensi / Package yang digunakan:
+      - GORM        untuk ORM
+      - GIN         untuk Routing
+      - dto-mapper  untuk membantu convert model ke DTO
+      - govalidator untuk membantu dalam validati data
+      - jwt-go      untuk membantu dalam membuat token JWT
+5. Buat beberapa folder
+      - controllers
+      - models
+      - routers
+      - middlewares
+      - configs
+      - dto
+      - helpers
+      - temp
+ 6. buat model 
+      - user
+      - photo
+      - comment
+      - social media
+ 6. buat file pada folder config dengan nama
+    config db.go dan daftarkan model yang digunakan
+7. buat beberapa responseDtO pada folder dto
+8. buat beberapa helper pada folder helper
+9. buat controller pada folder controller, 
+   kemudian gunakan dto dan beberapa helpers 
+   yang sudah di buat pada setiap func di controller.
+      - userControllers.go (CRUD)
+      - photoControllers.go (CRUD)
+      - commentControllers.go (CRUD)
+      - socialmediaControllers.go (CRUD)
+10. buat file authentication.go pada folder middlewares
+11. buat file pada folder router dengan nama router.go
+    buat endpoint api, hubungkan setiap endpoint dengan controller
+    yang digunakan dan batasi beberapa endpoint dengan middlewares
+    yang di butuhkan
+12. Selesai.
+
+###############################################################
+Panduan Menjalankan Program:
+BE: 
+ 1. Siapkan Database Postgres, 
+    kemudian buat Database dengan nama 
+    - mygram
+ 2. jalankan program dengan perintah 
+    - go run main.go  
+
+Referensi / Package yang digunakan:
+- GORM        untuk ORM
+- GIN         untuk Routing
+- dto-mapper  untuk membantu convert model ke DTO
+- govalidator untuk membantu dalam validati data
+- jwt-go      untuk membantu dalam membuat token JWT
+
+Postman :
+    URL Collection API : 
+      - https://www.getpostman.com/collections/5712177cc898dafe2925 
